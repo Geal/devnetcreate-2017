@@ -17,7 +17,9 @@
 
 -------------------------------------------
 
-< INSERT SCHEMA REVERSE PROXY >
+# reverse proxy
+
+<img src="img/proxying.png" style="width: 40%; position: absolute; top: -170px; left: 0; right: 0; margin-left: auto; margin-right: auto"/>
 
 -------------------------------------------
 
@@ -286,7 +288,7 @@ anything that augments service time will affect all the requests in flight, and 
 
 -------------------------------------------
 
-## garbage collection is garbage
+# garbage collection is garbage
 
 - increases wait time for everybody
 
@@ -326,9 +328,15 @@ ie, we should see the HTTP headers and the chunk headers, but not the rest of th
 
 -------------------------------------------
 
-## splicing
+# splicing
 
-<INSERT GRAPH>
+<img src="img/tcp-copying.png" style="width: 40%; position: absolute; top: -170px; left: 0; right: 0; margin-left: auto; margin-right: auto"/>
+
+-------------------------------------------
+
+# splicing
+
+<img src="img/network-splicing.png" style="width: 40%; position: absolute; top: -170px; left: 0; right: 0; margin-left: auto; margin-right: auto"/>
 
 <details role="note">
 what happens in most systems:
