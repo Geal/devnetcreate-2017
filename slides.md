@@ -13,13 +13,13 @@
 
 # Announcement
 
-<img src="img/sozu-logo.png" style="width: 40%; position: absolute; top: -170px; left: 0; right: 0; margin-left: auto; margin-right: auto"/>
+<img src="img/sozu-logo.png" style="width: 40%; position: absolute; top: -170px; left: 0; right: 50px; margin-left: auto; margin-right: auto"/>
 
 -------------------------------------------
 
 # reverse proxy
 
-<img src="img/proxying.png" style="width: 40%; position: absolute; top: -170px; left: 0; right: 0; margin-left: auto; margin-right: auto"/>
+<img src="img/proxying.png" style="width: 60%; position: absolute; top: -170px; left: 0; right: 0; margin-left: auto; margin-right: auto"/>
 
 -------------------------------------------
 
@@ -41,11 +41,15 @@
 
 ## hot reconfiguration
 
+<details role="note">
+
 - when you need a load balancer for a lot of backend servers
 - with microservices that change very often
 - blue/green deployments
 - you can know when to stop a backend server (ie, when the last active connection to that server closed)
 - it takes configuration diffs as input, it does not reload the complete configuration (dropping the previous one) like most existing solutions
+
+</details>
 
 -------------------------------------------
 
@@ -60,7 +64,7 @@
 
 - should never ever stop
 - can handle thousands of frontend configurations, and backend servers
-- it's open source
+- it's open source!
 - https://github.com/sozu-proxy/sozu
 
 -------------------------------------------
@@ -79,7 +83,7 @@
 
 -------------------------------------------
 
-# what does it mean to be fast?
+## what does it mean to be fast?
 
 -------------------------------------------
 
@@ -106,7 +110,9 @@ wait time = N * ( service time + context switch )
 
 # measuring performance
 
-averages VS percentiles
+-------------------------------------------
+
+## averages VS percentiles
 
 <details role="note">
 we don't want to only have a good average performance
@@ -119,7 +125,7 @@ we want to put a bound on the worst case response time => a request that is refu
 
 -------------------------------------------
 
-## How to measure? What do we measure?
+# How to measure? What do we measure?
 
 - fix parameters: CPU, RAM, request size, etc
 - augment gradually the number of concurrent requests
@@ -133,19 +139,19 @@ we want to put a bound on the worst case response time => a request that is refu
 
 -------------------------------------------
 
-## => horizontal scalability
+# => horizontal scalability
 
 use more resources, fix capacity?
 
 -------------------------------------------
 
-## => reduce context switches
+# => reduce context switches
 
 how?
 
 -------------------------------------------
 
-## => reduce service time
+# => reduce service time
 
 optimize your code, maybe?
 
@@ -153,7 +159,7 @@ optimize your code, maybe?
 
 # => lower latency in high percentiles
 
-1ms more on service time for one request is 1ms more for every request
+1 more ms on service time for 1 request is 1 more ms for every request
 
 -------------------------------------------
 
@@ -182,7 +188,7 @@ historical techniques: forking model, prefork, multithread (one thread per reque
 
 -------------------------------------------
 
-## the C10k problem
+# the C10k problem
 
 - non blocking IO
 - select, poll, epoll
@@ -221,20 +227,22 @@ show modern CPU architecture: cores, bus, caches
 -------------------------------------------
 
 ```text
-L1 cache reference      1   ns
-Branch mispredict       3   ns
-L2 cache reference      4   ns
-Mutex lock/unlock      17   ns
-Main memory reference 100   ns
+L1 cache reference        1 ns
+Branch mispredict         3 ns
+L2 cache reference        4 ns
+Mutex lock/unlock        17 ns
+Main memory reference   100 ns
 ```
 
 -------------------------------------------
 
-for 10000 requests, 1 L1 cache miss per req => 40ms more wait time per req
+for 10000 requests:
+
+1 L1 cache miss/req => 40ms more wait time/req
 
 -------------------------------------------
 
-program performance is dominated by cache misses
+## program performance is dominated by cache misses
 
 <details role="note">
 (Cliff Click, Devoxx.be 2016)
@@ -242,7 +250,7 @@ program performance is dominated by cache misses
 
 -------------------------------------------
 
-## context switches are costly
+# context switches are costly
 
 between 5 and 80ms per context switch
 
@@ -270,7 +278,9 @@ use core affinity: if the threads jumped from one core to another, you need to r
 
 -------------------------------------------
 
-## going further: multiqueue NICs
+# multiqueue NICs
+
+<img src="img/multiqueue.png" style="width: 40%; position: absolute; top: -170px; left: 0; right: 40px; margin-left: auto; margin-right: auto"/>
 
 <details role="note">
 https://blog.cloudflare.com/how-to-achieve-low-latency/
@@ -288,9 +298,13 @@ anything that augments service time will affect all the requests in flight, and 
 
 -------------------------------------------
 
+## optimize, optimize, optimize
+
+-------------------------------------------
+
 # garbage collection is garbage
 
-- increases wait time for everybody
+it increases wait time for everybody
 
 <details role="note">
 that's why garbage collection is such a big issue. Your system can be quite responsive most of the time, but if it is stopping processing to do garbage collection,
@@ -330,13 +344,13 @@ ie, we should see the HTTP headers and the chunk headers, but not the rest of th
 
 # splicing
 
-<img src="img/tcp-copying.png" style="width: 40%; position: absolute; top: -170px; left: 0; right: 0; margin-left: auto; margin-right: auto"/>
+<img src="img/tcp-copying.png" style="width: 60%; position: absolute; top: -170px; left: 0; right: 100px; margin-left: auto; margin-right: auto"/>
 
 -------------------------------------------
 
 # splicing
 
-<img src="img/network-splicing.png" style="width: 40%; position: absolute; top: -170px; left: 0; right: 0; margin-left: auto; margin-right: auto"/>
+<img src="img/network-splicing.png" style="width: 60%; position: absolute; top: -170px; left: 0; right: 100px; margin-left: auto; margin-right: auto"/>
 
 <details role="note">
 what happens in most systems:
@@ -367,9 +381,28 @@ currently, the proxy uses only one userspace buffer per request
 
 -------------------------------------------
 
-# Conclusion
-- response time = network latency + service time + wait time
-- wait time = N * ( service time + context switch )
-- every nanosecond counts
-- open source: https://github.com/sozu-proxy/sozu
+response time = network latency + service time + wait time
 
+wait time = N * ( service time + context switch )
+
+-------------------------------------------
+
+# Conclusion
+
+- design a meaningful benchmark
+- latencies have a multiplying effect
+- every nanosecond counts
+
+-------------------------------------------
+
+# Sozu
+
+<img src="img/sozu-logo.png" style="width: 40%; position: absolute; top: -170px; left: 0; right: 50px; margin-left: auto; margin-right: auto"/>
+
+-------------------------------------------
+
+# Thank you!
+
+- https://github.com/sozu-proxy/sozu
+- https://clever-cloud.com
+- twitter: @gcouprie
