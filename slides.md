@@ -1,6 +1,8 @@
-% modern techniques to write fast servers
+% Sōzu, a Modern Reverse Proxy Built for Immutable Infrastructure
 % Geoffroy Couprie
-% 2017-04-03
+% 2017-05-23
+
+-------------------------------------------
 
 # Hi, I'm Geoffroy
 
@@ -8,10 +10,15 @@
 * Freelance consultant, security and architecture
 * <span class="twitter">@gcouprie</span>
 * geoffroy.couprie@clever-cloud.com
+* "that nom guy"
 
 -------------------------------------------
 
-# Announcement
+<img src="assets/recto-tshirt.png" style="width: 78%; position: absolute; top: 0px; left: 0; right: 0px; margin-left: auto; margin-right: auto"/>
+
+-------------------------------------------
+
+# 📣 Announcement 📣
 
 <img src="img/sozu-logo.png" style="width: 40%; position: absolute; top: -170px; left: 0; right: 50px; margin-left: auto; margin-right: auto"/>
 
@@ -19,27 +26,47 @@
 
 # reverse proxy
 
-<img src="img/proxying.png" style="width: 60%; position: absolute; top: -170px; left: 0; right: 0; margin-left: auto; margin-right: auto"/>
+<img src="img/proxying.png" style="width: 60%; position: absolute; top: -170px; left: 0; right: 80px; margin-left: auto; margin-right: auto"/>
 
 -------------------------------------------
 
-# Sozu HTTP reverse proxy
+# Sōzu HTTP reverse proxy
 
-- configuration at runtime
-- fine grained configuration changes
-- upgrades without downtime
-- predictable memory usage
+- should never EVER stop
+- it's open source !
+- https://github.com/sozu-proxy/sozu
+- written in Rust !
+
+-------------------------------------------
+
+<img src="img/resf.png" style="width: 55%; overflow: hidden; position: absolute; top: 0px; left: 0; right: 0; margin-left: auto; margin-right: auto"/>
 
 -------------------------------------------
 
 # Good for
 
 - load balancer for a large number of applications
-- microservices
+- front server for microservices
 
 -------------------------------------------
 
-## hot reconfiguration
+# Why we did it
+
+changing configuration at runtime is hard
+
+<details role="note">
+
+- haproxy only suports full configuration reloads
+- if you wipe the old conf, you don't get info like when to stop a backend server
+- losing connections on reloads and upgrades
+- easy when you have 10s of apps. Hard when you have 1000s
+
+-------------------------------------------
+
+# Why we did it
+
+- changing configuration at runtime
+- fine grained configuration changes
 
 <details role="note">
 
@@ -53,292 +80,503 @@
 
 -------------------------------------------
 
-- sozu-lib: make your own proxy
-- sozu: main executable
-- sozu-command-lib: API to command sozu
-- sozu-ctl: command line configuration app
+# Why we did it
+
+- changing configuration at runtime
+- fine grained configuration changes
+- upgrades without downtime
+
+<details role="note">
+
+- when you need a load balancer for a lot of backend servers
+- with microservices that change very often
+- blue/green deployments
+- you can know when to stop a backend server (ie, when the last active connection to that server closed)
+- it takes configuration diffs as input, it does not reload the complete configuration (dropping the previous one) like most existing solutions
+</details>
 
 -------------------------------------------
 
-# We built a reverse proxy
+# Why we did it
 
-- should never ever stop
-- can handle thousands of frontend configurations, and backend servers
-- it's open source!
-- https://github.com/sozu-proxy/sozu
+- changing configuration at runtime
+- fine grained configuration changes
+- upgrades without downtime
+- predictable memory usage
+
+<details role="note">
+
+- when you need a load balancer for a lot of backend servers
+- with microservices that change very often
+- blue/green deployments
+- you can know when to stop a backend server (ie, when the last active connection to that server closed)
+- it takes configuration diffs as input, it does not reload the complete configuration (dropping the previous one) like most existing solutions
+
+</details>
+
+-------------------------------------------
+
+# Why we did it
+
+- changing configuration at runtime
+- fine grained configuration changes
+- upgrades without downtime
+- predictable memory usage
+- easy to write tools around
+
+<details role="note">
+
+- when you need a load balancer for a lot of backend servers
+- with microservices that change very often
+- blue/green deployments
+- you can know when to stop a backend server (ie, when the last active connection to that server closed)
+- it takes configuration diffs as input, it does not reload the complete configuration (dropping the previous one) like most existing solutions
+
+</details>
+
+-------------------------------------------
+
+![](./img/sozu.gif)
+
+-------------------------------------------
+
+## Let's look at the code!
+
+-------------------------------------------
+
+- main executable: **sozu**
+- make your own proxy: **sozu-lib**
+- API to command sōzu: **sozu-command-lib**
+- command line configuration app: **sozu-ctl**
 
 -------------------------------------------
 
 # Technical details
 
-- written in Rust
 - uses the nom parser combinators library
+- epoll based
 - supports HTTP 1 and TLS, HTTP/2 coming soon
-- managed through a Unix socket
 - multiprocess architecture
+- managed through a Unix socket
 
 -------------------------------------------
 
-## designed for speed and stability
+# Reliability
 
 -------------------------------------------
 
-## what does it mean to be fast?
+# Rust
+
+![](./img/rust-logo-512x512.png)
 
 -------------------------------------------
 
-total response time = network latency + service time + wait time
+# Rust
+
+- memory safe
+- strong type system => easy refactoring
+- no garbage collection
 
 -------------------------------------------
 
-## users only care about their own request
+# nom
+
+![](./img/cookie-monster.gif)
+
+-------------------------------------------
+
+# what is nom?
+
+- parser combinators
+- macros
 
 <details role="note">
-- they don't care about how many requests are done concurrently on one or 100 machines
-- they don't care about the latency of other requests
+I needed an easy way to write parsers
+parser combinators are simple, they're just functions
+easy to experiment
+
+started in July 2014 (in another repo)
+no impl Trait
+no lifetime elision
+closures?
+
+fighting lifetime issues was (still is) a pain
+compilation times
+(well, compilation times can be hairy in rust, like the alt! bug)
 </details>
 
 -------------------------------------------
 
-wait time = N * ( service time + context switch )
+```rust
+fn parser<I,O,E>(input: I) -> IResult<I, O, E>
 
--------------------------------------------
-
-## how to reduce wait time?
-
--------------------------------------------
-
-# measuring performance
-
--------------------------------------------
-
-## averages VS percentiles
+pub enum IResult<Input,Output,E=u32> {
+  // remaining input, result value
+  Done(Input,Output),
+  // error code with position
+  Error(Err<Input,E>),
+  //not enough data to decide
+  Incomplete(Needed)
+}
+```
 
 <details role="note">
-we don't want to only have a good average performance
-we also want to have low variance (show examples of systemms with good average response time but awful outliers)
-side note: in an adversarial setting (security, etc), people will exploit the worst case over and over, even if it's usually rare (example: slowloris attack, and hashmap attacks)
+EXPLAIN
 
-we want to put a bound on the worst case response time => a request that is refused quickly is better than a timeout
-
+Done contains output and remaining input
 </details>
 
 -------------------------------------------
 
-# How to measure? What do we measure?
-
-- fix parameters: CPU, RAM, request size, etc
-- augment gradually the number of concurrent requests
-- measure response time percentiles
-- measure timeouts
-- go on until the system breaks up under the load
-
--------------------------------------------
-
-## how to reduce wait time?
-
--------------------------------------------
-
-# => horizontal scalability
-
-use more resources, fix capacity?
-
--------------------------------------------
-
-# => reduce context switches
-
-how?
-
--------------------------------------------
-
-# => reduce service time
-
-optimize your code, maybe?
-
--------------------------------------------
-
-# => lower latency in high percentiles
-
-1 more ms on service time for 1 request is 1 more ms for every request
-
--------------------------------------------
-
-# stable timings in high percentiles
-
-- bounds on number of concurrent requests
-- preallocate
-- back pressure
-
--------------------------------------------
-
-## reducing resource consumption
-
--------------------------------------------
-
-# Server architecture
-
-- blocking IO
-- forking
-- prefork
-- multithreading
+```rust
+named!(data,
+  terminated!( alpha, digit )
+);
+```
 
 <details role="note">
-historical techniques: forking model, prefork, multithread (one thread per request)
+composition of functions
+
+take time to explain here
+
+macros are easy to write
+a bit annoying to debug when you don't get the right types
+some patterns are hard to express, like the permutation parser
+parser combinators are easy to express
 </details>
 
 -------------------------------------------
 
-# the C10k problem
+```rust
+fn data(input: &[u8]) -> IResult<&[u8], &[u8], u32> {
+  match alpha(input) {
+    Done(i, o) => {
 
-- non blocking IO
-- select, poll, epoll
-- single threaded event loop
+      match digit(i) {
+        Done(i2, _) => Done(i2, o),
 
-<details role="note">
-WHY? resource consumption, context switches between threads
+        Incomplete(Needed::Size(i)) =>
+          Incomplete(Needed::Size(
+            input.input_len() - i.input_len() + i)),
 
-one process or one thread per request was easy to write: blocking IO model
-but processes and threads are costly (in memory) and switching between them is costly (CPU, cache)
-
-epoll became the fastest option: register a list of sockets to the OS, let the OS tell you when you can read or write on which sockets
-epoll is for single threaded servers, but you can run epoll loops in multiple threads or processes
-SO_REUSEPORT: available in Linux 3.9, since 2013
-
-with this architecture, we only work when there's something to do with the sockets.
-epoll will allow interleaving work: read from one socket, parse it, send to backend, read from another, now read from the first backend socket, send to frontend
-</details>
-
--------------------------------------------
-
-## Why reduce context switches between threads or process?
-
-<details role="note">
-It's time for some CPU architecture \o/
-</details>
-
--------------------------------------------
-
-## Modern CPU architecture
-
-<details role="note">
-show modern CPU architecture: cores, bus, caches
-</details>
-
--------------------------------------------
-
-```text
-L1 cache reference        1 ns
-Branch mispredict         3 ns
-L2 cache reference        4 ns
-Mutex lock/unlock        17 ns
-Main memory reference   100 ns
+        e => e,
+      }
+    },
+    e => e
+  }
+}
 ```
 
 -------------------------------------------
 
-for 10000 requests:
-
-1 L1 cache miss/req => 40ms more wait time/req
+## what does it mean to "never ever stop" ?
 
 -------------------------------------------
 
-## program performance is dominated by cache misses
-
-<details role="note">
-(Cliff Click, Devoxx.be 2016)
-</details>
+![](./img/chain.gif)
 
 -------------------------------------------
 
-# context switches are costly
+# designing for stability
 
-between 5 and 80ms per context switch
-
-<details role="note">
-switching between threads on a single core means loading the new thread's data in the cache if it's not there, and this takes time
-</details>
+- how do we recover from failure?
+- how can we avoid losing connections?
+- how can we avoid restarting the process?
 
 -------------------------------------------
 
-## core affinity
-
-<details role="note">
-use core affinity: if the threads jumped from one core to another, you need to reload the caches
-</details>
+## multiprocess architecture
 
 -------------------------------------------
 
-## shared nothing architecture
+# multiprocess architecture
 
-<details role="note">
-- single thread architecture: everything happens in one thread, you can parallelize on multiple threads, but with no (or very low) interaction between them
-- for data shared between processes and thread, use message queues and immutable data. Immutable data does not need to be synchronized
-</details>
-
+- restarting crashed workers
 
 -------------------------------------------
 
-# multiqueue NICs
+# multiprocess architecture
 
-<img src="img/multiqueue.png" style="width: 40%; position: absolute; top: -170px; left: 0; right: 40px; margin-left: auto; margin-right: auto"/>
-
-<details role="note">
-https://blog.cloudflare.com/how-to-achieve-low-latency/
-some network cards can have per core packet queues: every packet for one TCP connection go to the same core
-with this single thread + core affinity architecture, we can use those network cards efficiently
-</details>
+- restarting crashed workers
+- zero downtime upgrades
 
 -------------------------------------------
 
-## reducing service time
+# multiprocess architecture
 
-<details role="note">
-anything that augments service time will affect all the requests in flight, and will delay new requests
-</details>
-
--------------------------------------------
-
-## optimize, optimize, optimize
+- restarting crashed workers
+- zero downtime upgrades
+- sandboxing processes
 
 -------------------------------------------
 
-# garbage collection is garbage
+# multiprocess architecture
 
-it increases wait time for everybody
-
-<details role="note">
-that's why garbage collection is such a big issue. Your system can be quite responsive most of the time, but if it is stopping processing to do garbage collection,
-then wait time increases for every request.
-a lot has been invested to make GC faster, especially in Go. But it still has a cost: going through objects (ie, loading them into the cache).
-mark and sweep GC will flush the cache: going through all object
-warning: potential trolling point here, might get grilled in the Q&A
-</details>
+- restarting crashed workers
+- zero downtime upgrades
+- sandboxing processes
+- perf optimization
 
 -------------------------------------------
 
-# in a proxy
-
-- short lived objects, almost always same size
-- long lived buffers, don't reallocate
-- => preallocate
-
-<details role="note">
-for a network service like a proxy, garbage collection makes no sense: we don't create a lot of objects per request, and it's very regular.
-an object pool and/or buffer pool is much better for our use cases
-
-Rust has no garbage collection, it handles memory allocation and deallocation where it's needed
-</details>
+# "How can you trust a man who wears both a belt and suspenders? The man can't even trust his own pants."
+![](./img/once_upon_a_time.jpg)
 
 -------------------------------------------
 
-## control plane VS data plane
+# Not losing connections on upgrade
 
-<details role="note">
-in telecoms, they viewed separately the control plane (SW and HW that chooses how to route data) and the data plane (where data effectively moves)
+- start new workers
+- new workers start accepting connections
+- old workers stop accepting connections
+- old workers finish current connections then stop
+- master forks to a new master
+- new master takes over, old one stops
 
-in a reverse proxy, we're on the control plane, we should not see much of the data plane
-ie, we should see the HTTP headers and the chunk headers, but not the rest of the content
-</details>
+-------------------------------------------
+
+# Actually not losing connections on upgrade
+
+- no guarantees on the accept queue
+- move the listening socket from old worker to new one
+
+-------------------------------------------
+
+## Workers
+
+-------------------------------------------
+
+<img src="img/cloning.gif" style="width: 135%; position: absolute; overflow: hidden; margin-left: auto; margin-right: auto"/>
+
+-------------------------------------------
+
+```rust
+pub fn start_worker_process(id: &str, config: &Config)
+  -> nix::Result<(pid_t, Channel<ProxyOrder,ServerMessage>)> {
+
+  let (server, client) = UnixStream::pair().unwrap();
+  let buffer_size = config.channel_buffer_size.unwrap_or(10000);
+
+  match nix::fork() {
+    ...
+  }
+}
+```
+
+-------------------------------------------
+
+```rust
+    Ok(ForkResult::Parent{ child }) => {
+      let mut command:Channel<Config,ServerMessage> =
+        Channel::new(server, buffer_size, buffer_size *2);
+      command.set_nonblocking(false);
+
+      command.write_message(config);
+
+      command.set_nonblocking(true);
+      let command: Channel<ProxyOrder,ServerMessage> =
+        command.into();
+      Ok((child, command))
+    },
+```
+
+-------------------------------------------
+
+```rust
+    Ok(ForkResult::Child) => {
+      let path = unsafe { get_executable_path() };
+
+      Command::new(path.to_str().unwrap())
+        .arg("worker")
+        .arg("--fd").arg(client.as_raw_fd().to_string())
+        .arg("--id").arg(id)
+        .arg("--channel-buffer-size").arg(buffer_size.to_string())
+        .exec();
+      unreachable!();
+    },
+
+```
+
+-------------------------------------------
+
+```rust
+pub fn begin_worker_process(fd: i32, id: &str,
+  buffer_size: usize) {
+  let mut command:Channel<ServerMessage,Config> =
+    Channel::new(unsafe { UnixStream::from_raw_fd(fd) },
+      buffer_size, buffer_size * 2 );
+  command.set_nonblocking(false);
+
+  let config = command.read_message().expect("worker error");
+
+  command.set_nonblocking(true);
+  let command : Channel<ServerMessage,ProxyOrder> =
+    command.into();
+```
+
+-------------------------------------------
+
+# changing configuration without restarts
+
+- the master accepts configuration changes from a unix socket
+- the master sends the configuration changes to workers
+- the workers update their routing table
+- the worker acknowledge the change
+
+-------------------------------------------
+
+# fine grained configuration changes
+
+- do not replace the entire configuration at once
+- work with diffs
+
+-------------------------------------------
+
+# configuration diffs
+
+- add/remove frontend:    hostname+URL prefix => app id
+- add/remove backend:     app id => IP+port
+- add/remove certificate: a frontend uses a fingerprint as reference
+
+-------------------------------------------
+
+# Removing a backend server
+
+- I received the order, but there are still connections
+- not creating any new connections to that backend
+- no more connections, you're free to remove it
+
+-------------------------------------------
+
+# Changing a certificate
+
+- add new certificate
+- add new frontends pointing to that new certificate
+- remove frontends with the old fingerprint
+- remove the old certificate
+  - if there are still frontends using it, this will not work right away
+
+-------------------------------------------
+
+```rust
+pub fn add_front(
+  channel: &mut Channel<ConfigMessage,ConfigMessageAnswer>,
+  app_id: &str, hostname: &str, path_begin: &str) {
+
+  let id = generate_id();
+  channel.write_message(&ConfigMessage::new(
+    id.clone(),
+    ConfigCommand::ProxyConfiguration(
+      Order::AddHttpFront(HttpFront {
+        app_id:     String::from(app_id),
+        hostname:   String::from(hostname),
+        path_begin: String::from(path_begin)
+      })
+    ),
+    None,
+  ));
+```
+
+-------------------------------------------
+
+```rust
+  match channel.read_message() {
+    Some(message) => {
+      if id != message.id {
+        println!("message has invalid id: {:?}", message);
+        return;
+      }
+      match message.status {
+        ConfigMessageStatus::Error => {
+          println!("could not add front: {}", message.message);
+        },
+        ConfigMessageStatus::Ok => {
+          println!("Front configuration done");
+        }
+        ConfigMessageStatus::Processing => {
+        },
+      }
+    },
+    None          => println!("the proxy didn't answer")
+  }
+}
+```
+
+-------------------------------------------
+
+# Emphasis on external tooling
+
+- the proxy is just a pipe
+- the proxy should not need implementations of Raft, etcd, Consul, Mesos, etc
+- write tools to drive the proxy
+
+-------------------------------------------
+
+# Example: Let's Encrypt
+
+- free, automated certificate authority
+- request a verification from the CA
+- the CA checks DNS records or calls a specific URI on the website
+- once validated, you can download the certificate
+
+-------------------------------------------
+
+# Example: Let's Encrypt
+
+- acme tool connects to the unix socket
+- add frontend for the site's hostname and prefix for the predefined URI
+- start a local webserver
+- add backend for this webserver, connected to this frontend
+- request verification from Let's Encrypt
+- download certificate
+- remove the custom frontend and backend
+- give the new certificate to the proxy, remove the old one
+
+-------------------------------------------
+
+# Conclusion
+
+- young project, but designed for production
+- good way to learn low level networking
+- easy to build tools around
+- lots of E-EASY issues ;)
+
+-------------------------------------------
+
+# future work
+
+- 3 process arch: TCP load balancer, router, manager
+- terminating TLS at the backend server
+- kubernetes, consul, etcd, etc. support
+- Let's Encrypt
+- splicing
+- HTTP/2
+
+-------------------------------------------
+
+## We need your help!
+
+-------------------------------------------
+
+# Sōzu
+
+<img src="img/sozu-logo.png" style="width: 40%; position: absolute; top: -170px; left: 0; right: 50px; margin-left: auto; margin-right: auto"/>
+
+-------------------------------------------
+
+<img src="img/approve.gif" style="width: 100%; overflow: hidden; position: absolute; top: 0px; left: 0; right: 0; margin-left: auto; margin-right: auto"/>
+
+-------------------------------------------
+
+# Thank you!
+
+- https://github.com/sozu-proxy/sozu
+- https://clever-cloud.com
+- twitter: @gcouprie
+
+-------------------------------------------
+
+## GIVE ME MORE
 
 -------------------------------------------
 
@@ -381,28 +619,60 @@ currently, the proxy uses only one userspace buffer per request
 
 -------------------------------------------
 
-response time = network latency + service time + wait time
-
-wait time = N * ( service time + context switch )
+## memory usage
 
 -------------------------------------------
 
-# Conclusion
-
-- design a meaningful benchmark
-- latencies have a multiplying effect
-- every nanosecond counts
+## single threaded
 
 -------------------------------------------
 
-# Sozu
-
-<img src="img/sozu-logo.png" style="width: 40%; position: absolute; top: -170px; left: 0; right: 50px; margin-left: auto; margin-right: auto"/>
+## core affinity
 
 -------------------------------------------
 
-# Thank you!
+## Why reduce context switches between threads or process?
 
-- https://github.com/sozu-proxy/sozu
-- https://clever-cloud.com
-- twitter: @gcouprie
+<details role="note">
+It's time for some CPU architecture \o/
+</details>
+
+-------------------------------------------
+
+## multiqueue NICs
+
+-------------------------------------------
+
+# Server architecture
+
+- blocking IO
+- forking
+- prefork
+- multithreading
+
+<details role="note">
+historical techniques: forking model, prefork, multithread (one thread per request)
+</details>
+
+-------------------------------------------
+
+# the C10k problem
+
+- non blocking IO
+- select, poll, epoll
+- single threaded event loop
+
+<details role="note">
+WHY? resource consumption, context switches between threads
+
+one process or one thread per request was easy to write: blocking IO model
+but processes and threads are costly (in memory) and switching between them is costly (CPU, cache)
+
+epoll became the fastest option: register a list of sockets to the OS, let the OS tell you when you can read or write on which sockets
+epoll is for single threaded servers, but you can run epoll loops in multiple threads or processes
+SO_REUSEPORT: available in Linux 3.9, since 2013
+
+with this architecture, we only work when there's something to do with the sockets.
+epoll will allow interleaving work: read from one socket, parse it, send to backend, read from another, now read from the first backend socket, send to frontend
+</details>
+
